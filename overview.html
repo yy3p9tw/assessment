@@ -1130,10 +1130,6 @@
     const mgmtFormHtml = (mgmtItems.length && !mgmtDone) ? `
       <div class="mgmt-score-box">
         <div class="subsection-title">共同管理項目<span class="who">管理課評分</span></div>
-        <div class="field">
-          <label>管理課填表人</label>
-          <input type="text" class="mgmt-reviewer" placeholder="您的姓名">
-        </div>
         ${mgmtItems.map(c => `
           <div class="criterion">
             <div class="criterion-info">
@@ -1155,7 +1151,6 @@
         ${mgmtFormHtml}
         <div class="detail-notes">
           ${record.explanation ? `<div class="note flag"><div class="k">分數異常說明</div><div class="v">${escapeHtml(record.explanation)}</div></div>` : ""}
-          ${record.managementReviewerName ? `<div class="note"><div class="k">管理課評分人</div><div class="v">${escapeHtml(record.managementReviewerName)}</div></div>` : ""}
           ${record.strengths ? `<div class="note"><div class="k">主要優點</div><div class="v">${escapeHtml(record.strengths)}</div></div>` : ""}
           ${record.improvements ? `<div class="note"><div class="k">待改進事項</div><div class="v">${escapeHtml(record.improvements)}</div></div>` : ""}
         </div>
@@ -1169,9 +1164,6 @@
     const cat = CATEGORIES[dept];
     const items = mgmtCriteria(cat);
     const box = btnEl.closest(".mgmt-score-box");
-
-    const reviewerName = box.querySelector(".mgmt-reviewer").value.trim();
-    if (!reviewerName) { showToast("請填寫管理課填表人姓名"); return; }
 
     const mgmtScores = {};
     for (const c of items) {
@@ -1201,7 +1193,6 @@
       await updateRecord(recordId, {
         scores: { ...record.scores, ...mgmtScores },
         total,
-        managementReviewerName: reviewerName,
         explanation,
       });
       showToast("管理評分已儲存");
