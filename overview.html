@@ -678,7 +678,7 @@
   <header class="top">
     <div class="brand">
       <h1>2026 年度績效考核</h1>
-      <div class="sub">填寫考核表</div>
+      <div class="sub">彙整總覽</div>
     </div>
   </header>
 
@@ -686,69 +686,27 @@
     ⚠️ 尚未設定 Firebase，資料僅暫存於本機瀏覽器，其他人看不到、也不會同步。請依照 README.md 設定 firebase-config.js。
   </div>
 
-  <!-- ===================== FORM VIEW ===================== -->
-  <section id="view-form">
-    <div class="card">
-      <div class="form-title">員工績效考核表</div>
-      <div class="form-desc">請據實填寫，各項目滿分依部門配分不同，總分滿分 100。</div>
+  <!-- ===================== OVERVIEW VIEW ===================== -->
+  <section id="view-overview">
+    <div class="toolbar">
+      <input type="search" id="filter-search" placeholder="搜尋姓名或填表人…" oninput="renderCards()">
+      <select id="filter-department" onchange="renderCards()">
+        <option value="">全部部門</option>
+      </select>
+      <select id="sort-by" onchange="renderCards()">
+        <option value="name">依姓名（部門原順序）</option>
+        <option value="score-desc">依總分（高到低）</option>
+        <option value="score-asc">依總分（低到高）</option>
+        <option value="date-desc">依填寫時間（新到舊）</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="icon-btn export" onclick="exportCsv()">⬇ 匯出 CSV</button>
+    </div>
 
-      <form id="assessment-form">
-        <div class="section">
-          <div class="section-label">基本資料</div>
-          <div class="grid-2">
-            <div class="field full">
-              <label>填表人姓名<span class="req">*</span></label>
-              <input type="text" id="f-reviewerName" placeholder="您的姓名" required>
-            </div>
-            <div class="field">
-              <label>部門<span class="req">*</span></label>
-              <select id="f-department" required onchange="onDepartmentChange()">
-                <option value="">請選擇部門</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>被考核者姓名<span class="req">*</span></label>
-              <select id="f-employeeName" required disabled>
-                <option value="">請先選擇部門</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="section" id="scoring-section" hidden>
-          <div class="section-label">評分項目</div>
-          <div id="criteria-groups"></div>
-          <div class="total-banner">
-            <span class="label">目前總分</span>
-            <span class="value" id="live-total">— / 100</span>
-          </div>
-          <div class="explain-box" id="explain-box" hidden>
-            <div class="field">
-              <label>分數低於 60 或高於 95，請敘明具體事實<span class="req">*</span></label>
-              <textarea id="f-explanation" placeholder="請具體說明評分依據，例如特殊事蹟或重大缺失"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">質性回饋（選填）</div>
-          <div class="grid-2">
-            <div class="field full">
-              <label>主要優點</label>
-              <textarea id="f-strengths" placeholder="這段期間表現突出之處"></textarea>
-            </div>
-            <div class="field full">
-              <label>待改進事項</label>
-              <textarea id="f-improvements" placeholder="建議加強或改善的方向"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="submit-row">
-          <button type="button" class="ghost" onclick="resetForm()">清除重填</button>
-          <button type="submit" class="primary" id="submit-btn">送出考核</button>
-        </div>
-      </form>
+    <div id="cards-wrap"></div>
+    <div class="empty-state" id="empty-state" hidden>
+      <div class="glyph">🗂️</div>
+      找不到符合條件的人員，換個部門或搜尋關鍵字試試。
     </div>
   </section>
 
@@ -758,7 +716,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getFirestore, collection, addDoc,
+    getFirestore, collection, deleteDoc, doc, onSnapshot, query, orderBy,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import { firebaseConfig } from "./firebase-config.js";
 
@@ -905,12 +863,12 @@
     }
   }
 
-  const scores = {};
+  let records = [];
 
   function $(id) { return document.getElementById(id); }
-  window.onDepartmentChange = onDepartmentChange;
-  window.setScore = setScore;
-  window.resetForm = resetForm;
+  window.confirmDelete = confirmDelete;
+  window.exportCsv = exportCsv;
+  window.renderCards = renderCards;
 
   function showToast(msg) {
     const t = $("toast");
@@ -918,165 +876,6 @@
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2600);
   }
-
-  function currentCategory() {
-    const dept = $("f-department").value;
-    return dept ? CATEGORIES[dept] : null;
-  }
-
-  // ---------- department / employee dropdowns ----------
-
-  function buildDepartmentOptions() {
-    const sel = $("f-department");
-    sel.innerHTML = '<option value="">請選擇部門</option>' +
-      Object.keys(CATEGORIES).map(d => `<option value="${d}">${d}</option>`).join("");
-  }
-
-  function onDepartmentChange() {
-    const cat = currentCategory();
-    const empSel = $("f-employeeName");
-    Object.keys(scores).forEach(k => delete scores[k]);
-    $("f-explanation").value = "";
-
-    if (!cat) {
-      empSel.innerHTML = '<option value="">請先選擇部門</option>';
-      empSel.disabled = true;
-      $("scoring-section").hidden = true;
-      return;
-    }
-    empSel.disabled = false;
-    empSel.innerHTML = '<option value="">請選擇被考核者</option>' +
-      cat.roster.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
-    buildCriteriaGroups(cat);
-    $("scoring-section").hidden = false;
-    updateTotal();
-  }
-
-  // ---------- criteria UI ----------
-
-  function buildCriteriaGroups(cat) {
-    const wrap = $("criteria-groups");
-    wrap.innerHTML = "";
-
-    const groups = [
-      { label: "部門評核項目", who: "部門直屬主管評分", items: cat.criteria.filter(c => c.evaluator === "部門直屬主管") },
-      { label: "共同管理項目", who: "管理部評分", items: cat.criteria.filter(c => c.evaluator === "管理部") },
-    ];
-
-    groups.forEach(group => {
-      if (!group.items.length) return;
-      const sub = document.createElement("div");
-      sub.className = "subsection";
-      const rows = group.items.map(c => `
-        <div class="criterion">
-          <div class="criterion-info">
-            <div class="criterion-name">${escapeHtml(c.text)}</div>
-          </div>
-          <div class="score-input">
-            <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1"
-              data-key="${c.key}" oninput="setScore('${c.key}', this.value, ${c.weight})">
-            <span class="max">/ ${c.weight}</span>
-          </div>
-        </div>`).join("");
-      sub.innerHTML = `
-        <div class="subsection-title">${group.label}<span class="who">${group.who}</span></div>
-        ${rows}`;
-      wrap.appendChild(sub);
-    });
-  }
-
-  function setScore(key, raw, weight) {
-    const n = raw === "" ? null : Math.max(0, Math.min(weight, Math.round(Number(raw))));
-    if (n === null) { delete scores[key]; }
-    else { scores[key] = n; }
-    updateTotal();
-  }
-
-  function totalScore(cat) {
-    return cat.criteria.reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);
-  }
-
-  function filledCount(cat) {
-    return cat.criteria.filter(c => scores[c.key] != null).length;
-  }
-
-  function updateTotal() {
-    const cat = currentCategory();
-    const el = $("live-total");
-    const explainBox = $("explain-box");
-    if (!cat) { el.textContent = "— / 100"; el.className = "value"; explainBox.hidden = true; return; }
-
-    const total = totalScore(cat);
-    const complete = filledCount(cat) === cat.criteria.length;
-    el.textContent = (complete ? total : "—") + " / 100";
-
-    let cls = "good";
-    if (complete && total < 60) cls = "bad";
-    else if (complete && (total > 95 || total < 70)) cls = "warn";
-    el.className = "value " + cls;
-
-    const needsExplain = complete && (total < 60 || total > 95);
-    explainBox.hidden = !needsExplain;
-  }
-
-  function resetForm() {
-    $("assessment-form").reset();
-    Object.keys(scores).forEach(k => delete scores[k]);
-    $("f-explanation").value = "";
-    $("scoring-section").hidden = true;
-    $("f-employeeName").innerHTML = '<option value="">請先選擇部門</option>';
-    $("f-employeeName").disabled = true;
-  }
-
-  // ---------- submit ----------
-
-  $("assessment-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const department = $("f-department").value;
-    const cat = currentCategory();
-    const employeeName = $("f-employeeName").value;
-    const reviewerName = $("f-reviewerName").value.trim();
-
-    if (!reviewerName) { showToast("請填寫填表人姓名"); return; }
-    if (!department || !cat) { showToast("請選擇部門"); return; }
-    if (!employeeName) { showToast("請選擇被考核者姓名"); return; }
-    if (filledCount(cat) < cat.criteria.length) { showToast("請完成所有評分項目"); return; }
-
-    const total = totalScore(cat);
-    const explanation = $("f-explanation").value.trim();
-    if ((total < 60 || total > 95) && !explanation) {
-      showToast("分數低於 60 或高於 95，請敘明具體事實");
-      return;
-    }
-
-    const btn = $("submit-btn");
-    btn.disabled = true;
-    btn.textContent = "送出中…";
-
-    const payload = {
-      employeeName,
-      department,
-      reviewerName,
-      scores: { ...scores },
-      total,
-      explanation,
-      strengths: $("f-strengths").value.trim(),
-      improvements: $("f-improvements").value.trim(),
-      submittedAt: new Date().toISOString(),
-    };
-
-    try {
-      await addRecord(payload);
-      showToast("考核已送出，可於「彙整總覽」查看");
-      resetForm();
-    } catch (err) {
-      console.error(err);
-      showToast("送出失敗，請稍後再試");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "送出考核";
-    }
-  });
 
   // ---------- data layer: Firestore, with localStorage fallback ----------
 
@@ -1091,13 +890,207 @@
     try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); } catch {}
   }
 
-  async function addRecord(payload) {
+  async function deleteRecord(id) {
     if (db) {
-      await addDoc(collection(db, "assessments"), payload);
+      await deleteDoc(doc(db, "assessments", id));
     } else {
-      const list = loadLocal();
-      list.push({ id: "local-" + Date.now(), ...payload });
-      saveLocal(list);
+      records = loadLocal().filter(r => r.id !== id);
+      saveLocal(records);
+      renderAll();
+    }
+  }
+
+  function initDataLayer() {
+    if (db) {
+      const q = query(collection(db, "assessments"), orderBy("submittedAt", "desc"));
+      onSnapshot(q,
+        (snap) => {
+          records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderAll();
+        },
+        (err) => {
+          console.error("firestore error", err);
+          showToast("資料連線發生問題，請檢查 Firestore 設定");
+        }
+      );
+    } else {
+      records = loadLocal();
+      renderAll();
+    }
+  }
+
+  // ---------- overview rendering ----------
+
+  function bandOf(total) {
+    if (total < 60) return { label: "不合格", cls: "bad", flagged: true };
+    if (total > 95) return { label: "優異", cls: "good", flagged: true };
+    if (total >= 80) return { label: "良好", cls: "good", flagged: false };
+    if (total >= 70) return { label: "尚可", cls: "warn", flagged: false };
+    return { label: "待加強", cls: "warn", flagged: false };
+  }
+
+  function renderAll() {
+    renderDepartmentOptions();
+    renderCards();
+  }
+
+  function renderDepartmentOptions() {
+    const sel = $("filter-department");
+    const current = sel.value;
+    sel.innerHTML = '<option value="">全部部門</option>' +
+      Object.keys(CATEGORIES).map(d => `<option value="${d}">${d}</option>`).join("");
+    if (Object.keys(CATEGORIES).includes(current)) sel.value = current;
+  }
+
+  function getFilteredRecords() {
+    const q = $("filter-search").value.trim().toLowerCase();
+    const department = $("filter-department").value;
+    let rows = records.filter(r => {
+      if (department && r.department !== department) return false;
+      if (q && !(`${r.employeeName} ${r.reviewerName}`.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    rows.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    return rows;
+  }
+
+  function recordsFor(dept, name) {
+    return records.filter(r => r.department === dept && r.employeeName === name);
+  }
+
+  function getLatestRecordFor(dept, name) {
+    const matches = recordsFor(dept, name);
+    if (!matches.length) return null;
+    return matches.slice().sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0];
+  }
+
+  let expandedId = null;
+
+  function renderCards() {
+    const q = $("filter-search").value.trim().toLowerCase();
+    const deptFilter = $("filter-department").value;
+    const sortBy = $("sort-by").value;
+    const wrap = $("cards-wrap");
+    wrap.innerHTML = "";
+    let anyShown = false;
+
+    Object.keys(CATEGORIES).forEach(dept => {
+      if (deptFilter && dept !== deptFilter) return;
+      const cat = CATEGORIES[dept];
+
+      let people = cat.roster
+        .map(person => ({ person, record: getLatestRecordFor(dept, person.name) }))
+        .filter(({ person, record }) => {
+          if (!q) return true;
+          const hay = `${person.name} ${record ? record.reviewerName : ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+      if (!people.length) return;
+
+      if (sortBy === "score-desc" || sortBy === "score-asc") {
+        people.sort((a, b) => {
+          const af = a.record ? 0 : 1, bf = b.record ? 0 : 1;
+          if (af !== bf) return af - bf;
+          if (!a.record) return 0;
+          return sortBy === "score-desc" ? (b.record.total - a.record.total) : (a.record.total - b.record.total);
+        });
+      } else if (sortBy === "date-desc") {
+        people.sort((a, b) => new Date(b.record?.submittedAt || 0) - new Date(a.record?.submittedAt || 0));
+      }
+
+      anyShown = true;
+      const filledCount = people.filter(p => p.record).length;
+      const section = document.createElement("div");
+      section.className = "dept-section";
+      section.innerHTML = `
+        <div class="dept-header">
+          <h2>${escapeHtml(dept)}</h2>
+          <span class="count">${filledCount} / ${people.length} 已填寫</span>
+        </div>
+        <div class="card-grid"></div>`;
+      wrap.appendChild(section);
+      const grid = section.querySelector(".card-grid");
+      people.forEach(({ person, record }) => grid.appendChild(buildPersonCard(dept, person, record)));
+    });
+
+    $("empty-state").hidden = anyShown;
+  }
+
+  function buildPersonCard(dept, person, record) {
+    const cardId = dept + "|" + person.name;
+    const card = document.createElement("div");
+
+    if (!record) {
+      card.className = "person-card pending";
+      card.innerHTML = `
+        <div class="person-card-head">
+          <div>
+            <div class="emp-name">${escapeHtml(person.name)}</div>
+          </div>
+          <span class="badge pending">尚未填寫</span>
+        </div>`;
+      return card;
+    }
+
+    const isExpanded = expandedId === cardId;
+    card.className = "person-card" + (isExpanded ? " expanded" : "");
+    card.onclick = (e) => {
+      if (e.target.closest(".icon-btn")) return;
+      expandedId = isExpanded ? null : cardId;
+      renderCards();
+    };
+
+    const band = bandOf(record.total ?? 0);
+    const dt = record.submittedAt ? new Date(record.submittedAt) : null;
+    const dtStr = dt ? `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}` : "—";
+    const history = recordsFor(dept, person.name);
+
+    card.innerHTML = `
+      <div class="person-card-head">
+        <div>
+          <div class="emp-name">${escapeHtml(person.name)}</div>
+        </div>
+        <div class="person-card-score">
+          <div class="num">${record.total}<small> / 100</small></div>
+          <span class="badge ${band.cls}">${band.label}</span>
+        </div>
+      </div>
+      <div class="person-card-meta">
+        <span>填表人：${escapeHtml(record.reviewerName || "—")}</span>
+        <span>填寫時間：${dtStr}${history.length > 1 ? `（共 ${history.length} 筆紀錄，顯示最新）` : ""}</span>
+      </div>
+      ${isExpanded ? buildDetailHtml(dept, record) : `
+        <div class="person-card-foot">
+          <button class="icon-btn" onclick="event.stopPropagation(); confirmDelete('${record.id}')">刪除</button>
+        </div>`}`;
+    return card;
+  }
+
+  function buildDetailHtml(dept, record) {
+    const cat = CATEGORIES[dept];
+    const criteriaHtml = cat ? cat.criteria.map(c => `
+      <div class="detail-item">
+        <div class="k">${escapeHtml(c.text)}<span class="tag">${c.evaluator}評分</span></div>
+        <div class="v">${record.scores?.[c.key] ?? "—"} / ${c.weight}</div>
+      </div>`).join("") : "";
+    return `
+      <div class="person-card-detail">
+        <div class="detail-grid">${criteriaHtml}</div>
+        <div class="detail-notes">
+          ${record.explanation ? `<div class="note flag"><div class="k">分數異常說明</div><div class="v">${escapeHtml(record.explanation)}</div></div>` : ""}
+          ${record.strengths ? `<div class="note"><div class="k">主要優點</div><div class="v">${escapeHtml(record.strengths)}</div></div>` : ""}
+          ${record.improvements ? `<div class="note"><div class="k">待改進事項</div><div class="v">${escapeHtml(record.improvements)}</div></div>` : ""}
+        </div>
+        <div class="person-card-foot">
+          <button class="icon-btn" onclick="event.stopPropagation(); confirmDelete('${record.id}')">刪除</button>
+        </div>
+      </div>`;
+  }
+
+  function confirmDelete(id) {
+    if (confirm("確定要刪除這筆考核紀錄嗎？此動作無法復原。")) {
+      deleteRecord(id).then(() => showToast("已刪除該筆紀錄"));
     }
   }
 
@@ -1105,10 +1098,49 @@
     return String(str ?? "").replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]));
   }
 
+  // ---------- CSV export ----------
+
+  function exportCsv() {
+    const rows = getFilteredRecords();
+    if (!rows.length) { showToast("目前沒有可匯出的資料"); return; }
+
+    const header = ["部門", "被考核者姓名", "填表人姓名",
+      "評分明細", "總分", "等第", "分數異常說明", "主要優點", "待改進事項", "填寫時間"];
+
+    const lines = [header];
+    rows.forEach(rec => {
+      const cat = CATEGORIES[rec.department];
+      const detail = cat ? cat.criteria.map(c => `${c.text}:${rec.scores?.[c.key] ?? ""}/${c.weight}`).join(" | ") : "";
+      lines.push([
+        rec.department, rec.employeeName, rec.reviewerName,
+        detail, rec.total ?? "", bandOf(rec.total ?? 0).label,
+        rec.explanation, rec.strengths, rec.improvements,
+        rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : "",
+      ]);
+    });
+
+    const csv = "﻿" + lines.map(row =>
+      row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\r\n");
+
+    const filename = `績效考核彙整_${new Date().toISOString().slice(0, 10)}.csv`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("CSV 已匯出");
+  }
+
   // ---------- boot ----------
 
-  buildDepartmentOptions();
+  renderAll();
   $("banner-offline").hidden = FIREBASE_READY;
+  initDataLayer();
 </script>
 </body>
 </html>
