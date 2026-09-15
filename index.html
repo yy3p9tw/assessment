@@ -690,7 +690,7 @@
   <section id="view-form">
     <div class="card">
       <div class="form-title">員工績效考核表</div>
-      <div class="form-desc">請據實填寫，各項目滿分依部門配分不同，總分滿分 100。</div>
+      <div class="form-desc">請據實填寫部門評核項目，滿分依部門配分不同。共同管理項目（出勤紀律、組織文化配合度）將由管理課於彙整總覽另行評分。</div>
 
       <form id="assessment-form">
         <div class="section">
@@ -716,17 +716,11 @@
         </div>
 
         <div class="section" id="scoring-section" hidden>
-          <div class="section-label">評分項目</div>
+          <div class="section-label">部門評核項目</div>
           <div id="criteria-groups"></div>
           <div class="total-banner">
-            <span class="label">目前總分</span>
+            <span class="label">部門評核小計</span>
             <span class="value" id="live-total">— / 100</span>
-          </div>
-          <div class="explain-box" id="explain-box" hidden>
-            <div class="field">
-              <label>分數低於 60 或高於 95，請敘明具體事實<span class="req">*</span></label>
-              <textarea id="f-explanation" placeholder="請具體說明評分依據，例如特殊事蹟或重大缺失"></textarea>
-            </div>
           </div>
         </div>
 
@@ -924,6 +918,10 @@
     return dept ? CATEGORIES[dept] : null;
   }
 
+  function deptCriteria(cat) {
+    return cat.criteria.filter(c => c.evaluator === "部門直屬主管");
+  }
+
   // ---------- department / employee dropdowns ----------
 
   function buildDepartmentOptions() {
@@ -936,7 +934,6 @@
     const cat = currentCategory();
     const empSel = $("f-employeeName");
     Object.keys(scores).forEach(k => delete scores[k]);
-    $("f-explanation").value = "";
 
     if (!cat) {
       empSel.innerHTML = '<option value="">請先選擇部門</option>';
@@ -958,31 +955,20 @@
     const wrap = $("criteria-groups");
     wrap.innerHTML = "";
 
-    const groups = [
-      { label: "部門評核項目", who: "部門直屬主管評分", items: cat.criteria.filter(c => c.evaluator === "部門直屬主管") },
-      { label: "共同管理項目", who: "管理部評分", items: cat.criteria.filter(c => c.evaluator === "管理部") },
-    ];
-
-    groups.forEach(group => {
-      if (!group.items.length) return;
-      const sub = document.createElement("div");
-      sub.className = "subsection";
-      const rows = group.items.map(c => `
-        <div class="criterion">
-          <div class="criterion-info">
-            <div class="criterion-name">${escapeHtml(c.text)}</div>
-          </div>
-          <div class="score-input">
-            <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1"
-              data-key="${c.key}" oninput="setScore('${c.key}', this.value, ${c.weight})">
-            <span class="max">/ ${c.weight}</span>
-          </div>
-        </div>`).join("");
-      sub.innerHTML = `
-        <div class="subsection-title">${group.label}<span class="who">${group.who}</span></div>
-        ${rows}`;
-      wrap.appendChild(sub);
-    });
+    const items = deptCriteria(cat);
+    if (!items.length) return;
+    const rows = items.map(c => `
+      <div class="criterion">
+        <div class="criterion-info">
+          <div class="criterion-name">${escapeHtml(c.text)}</div>
+        </div>
+        <div class="score-input">
+          <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1"
+            data-key="${c.key}" oninput="setScore('${c.key}', this.value, ${c.weight})">
+          <span class="max">/ ${c.weight}</span>
+        </div>
+      </div>`).join("");
+    wrap.innerHTML = rows;
   }
 
   function setScore(key, raw, weight) {
@@ -993,36 +979,36 @@
   }
 
   function totalScore(cat) {
-    return cat.criteria.reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);
+    return deptCriteria(cat).reduce((sum, c) => sum + (scores[c.key] ?? 0), 0);
   }
 
   function filledCount(cat) {
-    return cat.criteria.filter(c => scores[c.key] != null).length;
+    return deptCriteria(cat).filter(c => scores[c.key] != null).length;
   }
 
   function updateTotal() {
     const cat = currentCategory();
     const el = $("live-total");
-    const explainBox = $("explain-box");
-    if (!cat) { el.textContent = "— / 100"; el.className = "value"; explainBox.hidden = true; return; }
+    if (!cat) { el.textContent = "— / 100"; el.className = "value"; return; }
 
+    const items = deptCriteria(cat);
+    const max = items.reduce((sum, c) => sum + c.weight, 0);
     const total = totalScore(cat);
-    const complete = filledCount(cat) === cat.criteria.length;
-    el.textContent = (complete ? total : "—") + " / 100";
+    const complete = filledCount(cat) === items.length;
+    el.textContent = (complete ? total : "—") + " / " + max;
 
     let cls = "good";
-    if (complete && total < 60) cls = "bad";
-    else if (complete && (total > 95 || total < 70)) cls = "warn";
+    if (complete) {
+      const ratio = max ? total / max : 0;
+      if (ratio < 0.6) cls = "bad";
+      else if (ratio < 0.8) cls = "warn";
+    }
     el.className = "value " + cls;
-
-    const needsExplain = complete && (total < 60 || total > 95);
-    explainBox.hidden = !needsExplain;
   }
 
   function resetForm() {
     $("assessment-form").reset();
     Object.keys(scores).forEach(k => delete scores[k]);
-    $("f-explanation").value = "";
     $("scoring-section").hidden = true;
     $("f-employeeName").innerHTML = '<option value="">請先選擇部門</option>';
     $("f-employeeName").disabled = true;
@@ -1040,14 +1026,9 @@
     if (!reviewerName) { showToast("請填寫填表人姓名"); return; }
     if (!department || !cat) { showToast("請選擇部門"); return; }
     if (!employeeName) { showToast("請選擇被考核者姓名"); return; }
-    if (filledCount(cat) < cat.criteria.length) { showToast("請完成所有評分項目"); return; }
+    if (filledCount(cat) < deptCriteria(cat).length) { showToast("請完成所有評分項目"); return; }
 
     const total = totalScore(cat);
-    const explanation = $("f-explanation").value.trim();
-    if ((total < 60 || total > 95) && !explanation) {
-      showToast("分數低於 60 或高於 95，請敘明具體事實");
-      return;
-    }
 
     const btn = $("submit-btn");
     btn.disabled = true;
@@ -1059,7 +1040,6 @@
       reviewerName,
       scores: { ...scores },
       total,
-      explanation,
       strengths: $("f-strengths").value.trim(),
       improvements: $("f-improvements").value.trim(),
       submittedAt: new Date().toISOString(),

@@ -591,6 +591,25 @@
     margin-bottom: 14px;
   }
 
+  .mgmt-score-box {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    cursor: default;
+  }
+
+  .mgmt-score-box .subsection-title {
+    color: var(--accent-strong);
+  }
+
+  .mgmt-score-foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
   .detail-item {
     display: flex;
     align-items: baseline;
@@ -716,7 +735,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getFirestore, collection, deleteDoc, doc, onSnapshot, query, orderBy,
+    getFirestore, collection, deleteDoc, updateDoc, doc, onSnapshot, query, orderBy,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import { firebaseConfig } from "./firebase-config.js";
 
@@ -869,6 +888,7 @@
   window.confirmDelete = confirmDelete;
   window.exportCsv = exportCsv;
   window.renderCards = renderCards;
+  window.saveManagementScores = saveManagementScores;
 
   function showToast(msg) {
     const t = $("toast");
@@ -895,6 +915,16 @@
       await deleteDoc(doc(db, "assessments", id));
     } else {
       records = loadLocal().filter(r => r.id !== id);
+      saveLocal(records);
+      renderAll();
+    }
+  }
+
+  async function updateRecord(id, patch) {
+    if (db) {
+      await updateDoc(doc(db, "assessments", id), patch);
+    } else {
+      records = loadLocal().map(r => r.id === id ? { ...r, ...patch } : r);
       saveLocal(records);
       renderAll();
     }
@@ -927,6 +957,23 @@
     if (total >= 80) return { label: "良好", cls: "good", flagged: false };
     if (total >= 70) return { label: "尚可", cls: "warn", flagged: false };
     return { label: "待加強", cls: "warn", flagged: false };
+  }
+
+  function deptCriteria(cat) {
+    return cat.criteria.filter(c => c.evaluator === "部門直屬主管");
+  }
+
+  function mgmtCriteria(cat) {
+    return cat.criteria.filter(c => c.evaluator === "管理部");
+  }
+
+  function isMgmtDone(record, cat) {
+    const items = mgmtCriteria(cat);
+    return items.length === 0 || items.every(c => record.scores?.[c.key] != null);
+  }
+
+  function combinedTotal(record, cat) {
+    return cat.criteria.reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
   }
 
   function renderAll() {
@@ -1036,12 +1083,15 @@
     const isExpanded = expandedId === cardId;
     card.className = "person-card" + (isExpanded ? " expanded" : "");
     card.onclick = (e) => {
-      if (e.target.closest(".icon-btn")) return;
+      if (e.target.closest(".icon-btn, input, textarea, select, .mgmt-score-box")) return;
       expandedId = isExpanded ? null : cardId;
       renderCards();
     };
 
-    const band = bandOf(record.total ?? 0);
+    const cat = CATEGORIES[dept];
+    const total = combinedTotal(record, cat);
+    const mgmtDone = isMgmtDone(record, cat);
+    const band = mgmtDone ? bandOf(total) : { label: "管理項目待評分", cls: "warn" };
     const dt = record.submittedAt ? new Date(record.submittedAt) : null;
     const dtStr = dt ? `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}` : "—";
     const history = recordsFor(dept, person.name);
@@ -1052,7 +1102,7 @@
           <div class="emp-name">${escapeHtml(person.name)}</div>
         </div>
         <div class="person-card-score">
-          <div class="num">${record.total}<small> / 100</small></div>
+          <div class="num">${total}<small> / 100</small></div>
           <span class="badge ${band.cls}">${band.label}</span>
         </div>
       </div>
@@ -1074,11 +1124,38 @@
         <div class="k">${escapeHtml(c.text)}<span class="tag">${c.evaluator}評分</span></div>
         <div class="v">${record.scores?.[c.key] ?? "—"} / ${c.weight}</div>
       </div>`).join("") : "";
+
+    const mgmtItems = cat ? mgmtCriteria(cat) : [];
+    const mgmtDone = cat ? isMgmtDone(record, cat) : true;
+    const mgmtFormHtml = (mgmtItems.length && !mgmtDone) ? `
+      <div class="mgmt-score-box">
+        <div class="subsection-title">共同管理項目<span class="who">管理課評分</span></div>
+        <div class="field">
+          <label>管理課填表人</label>
+          <input type="text" class="mgmt-reviewer" placeholder="您的姓名">
+        </div>
+        ${mgmtItems.map(c => `
+          <div class="criterion">
+            <div class="criterion-info">
+              <div class="criterion-name">${escapeHtml(c.text)}</div>
+            </div>
+            <div class="score-input">
+              <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1" class="mgmt-score" data-key="${c.key}">
+              <span class="max">/ ${c.weight}</span>
+            </div>
+          </div>`).join("")}
+        <div class="mgmt-score-foot">
+          <button class="icon-btn export" onclick="saveManagementScores('${dept}', '${record.id}', this)">儲存管理評分</button>
+        </div>
+      </div>` : "";
+
     return `
       <div class="person-card-detail">
         <div class="detail-grid">${criteriaHtml}</div>
+        ${mgmtFormHtml}
         <div class="detail-notes">
           ${record.explanation ? `<div class="note flag"><div class="k">分數異常說明</div><div class="v">${escapeHtml(record.explanation)}</div></div>` : ""}
+          ${record.managementReviewerName ? `<div class="note"><div class="k">管理課評分人</div><div class="v">${escapeHtml(record.managementReviewerName)}</div></div>` : ""}
           ${record.strengths ? `<div class="note"><div class="k">主要優點</div><div class="v">${escapeHtml(record.strengths)}</div></div>` : ""}
           ${record.improvements ? `<div class="note"><div class="k">待改進事項</div><div class="v">${escapeHtml(record.improvements)}</div></div>` : ""}
         </div>
@@ -1086,6 +1163,54 @@
           <button class="icon-btn" onclick="event.stopPropagation(); confirmDelete('${record.id}')">刪除</button>
         </div>
       </div>`;
+  }
+
+  async function saveManagementScores(dept, recordId, btnEl) {
+    const cat = CATEGORIES[dept];
+    const items = mgmtCriteria(cat);
+    const box = btnEl.closest(".mgmt-score-box");
+
+    const reviewerName = box.querySelector(".mgmt-reviewer").value.trim();
+    if (!reviewerName) { showToast("請填寫管理課填表人姓名"); return; }
+
+    const mgmtScores = {};
+    for (const c of items) {
+      const input = box.querySelector(`.mgmt-score[data-key="${c.key}"]`);
+      const raw = input.value;
+      if (raw === "") { showToast("請完成所有管理評分項目"); return; }
+      mgmtScores[c.key] = Math.max(0, Math.min(c.weight, Math.round(Number(raw))));
+    }
+
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+
+    const deptTotal = deptCriteria(cat).reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
+    const mgmtTotal = items.reduce((sum, c) => sum + mgmtScores[c.key], 0);
+    const total = deptTotal + mgmtTotal;
+
+    let explanation = record.explanation || "";
+    if (total < 60 || total > 95) {
+      const input = window.prompt("總分低於 60 或高於 95，請敘明具體事實：", explanation);
+      if (!input || !input.trim()) { showToast("請敘明具體事實後再儲存"); return; }
+      explanation = input.trim();
+    }
+
+    btnEl.disabled = true;
+    btnEl.textContent = "儲存中…";
+    try {
+      await updateRecord(recordId, {
+        scores: { ...record.scores, ...mgmtScores },
+        total,
+        managementReviewerName: reviewerName,
+        explanation,
+      });
+      showToast("管理評分已儲存");
+    } catch (err) {
+      console.error(err);
+      showToast("儲存失敗，請稍後再試");
+      btnEl.disabled = false;
+      btnEl.textContent = "儲存管理評分";
+    }
   }
 
   function confirmDelete(id) {
@@ -1111,9 +1236,11 @@
     rows.forEach(rec => {
       const cat = CATEGORIES[rec.department];
       const detail = cat ? cat.criteria.map(c => `${c.text}:${rec.scores?.[c.key] ?? ""}/${c.weight}`).join(" | ") : "";
+      const total = cat ? combinedTotal(rec, cat) : (rec.total ?? "");
+      const label = cat && !isMgmtDone(rec, cat) ? "管理項目待評分" : bandOf(total).label;
       lines.push([
         rec.department, rec.employeeName, rec.reviewerName,
-        detail, rec.total ?? "", bandOf(rec.total ?? 0).label,
+        detail, total, label,
         rec.explanation, rec.strengths, rec.improvements,
         rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : "",
       ]);
