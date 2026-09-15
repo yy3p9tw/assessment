@@ -258,14 +258,6 @@
     line-height: 1.5;
   }
 
-  .join-date-chip {
-    font-size: 0.76rem;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-
-  .join-date-chip b { color: var(--accent-strong); font-weight: 600; }
-
   .subsection {
     margin-top: 4px;
   }
@@ -719,10 +711,9 @@
             </div>
             <div class="field">
               <label>被考核者姓名<span class="req">*</span></label>
-              <select id="f-employeeName" required disabled onchange="onEmployeeChange()">
+              <select id="f-employeeName" required disabled>
                 <option value="">請先選擇部門</option>
               </select>
-              <div class="join-date-chip" id="join-date-chip" hidden>到職日期：<b id="join-date-value"></b></div>
             </div>
           </div>
         </div>
@@ -803,19 +794,19 @@
   const CATEGORIES = {
     "運輸課": {
       criteria: [
-        { key: "c1", text: "出車前是否確實核對出貨單、簽單與實物數量/品項，無遺漏", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c2", text: "路線規劃與運輸效率-評估運輸作業的準點率(實際出發/到達時間與預定時間之比較)", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c3", text: "評估貨物抵達狀態及運送過程中失誤或損壞的比例", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c4", text: "作業與駕駛安全 -是否發生安全事故，是否遵守交通規則，及相關安全紀錄", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c1", text: "出車前是否確實核對出貨單、簽單與實物數量/品項，無遺漏", weight: 15, evaluator: "部門直屬主管" },
+        { key: "c2", text: "路線規劃與運輸效率-評估運輸作業的準點率(實際出發/到達時間與預定時間之比較)", weight: 15, evaluator: "部門直屬主管" },
+        { key: "c3", text: "評估貨物抵達狀態及運送過程中失誤或損壞的比例", weight: 7, evaluator: "部門直屬主管" },
+        { key: "c4", text: "作業與駕駛安全 -是否發生安全事故，是否遵守交通規則，及相關安全紀錄", weight: 8, evaluator: "部門直屬主管" },
         { key: "c5", text: "紀錄與回報完整性-落實到貨拍照回報、客戶滿意度、團隊合作與任務完成", weight: 12, evaluator: "部門直屬主管" },
-        { key: "c6", text: "車輛維護與保養及應急處理能力(評估司機遇到事故、貨物損壞、客戶異常要求等應變能力)", weight: 15, evaluator: "部門直屬主管" },
+        { key: "c6", text: "車輛維護與保養及應急處理能力(評估司機遇到事故、貨物損壞、客戶異常要求等應變能力)", weight: 10, evaluator: "部門直屬主管" },
         { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "謝玄德", joinDate: "2023-08-01" },
-        { name: "郭展男", joinDate: "2024-09-10" },
-        { name: "吳冠儀", joinDate: "2023-09-11" },
+        { name: "謝玄德" },
+        { name: "郭展男" },
+        { name: "吳冠儀" },
       ],
     },
     "倉儲管理": {
@@ -830,9 +821,9 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "石位澤", joinDate: "2024-10-08" },
-        { name: "康庭維", joinDate: "2025-12-26" },
-        { name: "林旭彬", joinDate: "2026-08-04" },
+        { name: "石位澤" },
+        { name: "康庭維" },
+        { name: "林旭彬" },
       ],
     },
     "會計課": {
@@ -847,9 +838,9 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "李冠霖", joinDate: "2024-05-01" },
-        { name: "許嘉樺", joinDate: "2025-06-02" },
-        { name: "李柏蓉", joinDate: "2020-10-13" },
+        { name: "李冠霖" },
+        { name: "許嘉樺" },
+        { name: "李柏蓉" },
       ],
     },
     "業務助理": {
@@ -864,7 +855,7 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "于崇銘", joinDate: "2026-06-16" },
+        { name: "于崇銘" },
       ],
     },
     "生產製造課": {
@@ -879,15 +870,15 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "蔡文斌", joinDate: "2020-07-16" },
-        { name: "葉建順", joinDate: "2025-04-01" },
-        { name: "王誌光", joinDate: "2020-09-04" },
-        { name: "賴嬿軫", joinDate: "2023-03-01" },
-        { name: "江阿朵", joinDate: "2023-08-29" },
-        { name: "阮文世", joinDate: "2024-10-16" },
-        { name: "鄧陳維天", joinDate: "2026-08-19" },
-        { name: "阮海登", joinDate: "2026-08-19" },
-        { name: "鄧文怡", joinDate: "2026-08-19" },
+        { name: "蔡文斌" },
+        { name: "葉建順" },
+        { name: "王誌光" },
+        { name: "賴嬿軫" },
+        { name: "江阿朵" },
+        { name: "阮文世" },
+        { name: "鄧陳維天" },
+        { name: "阮海登" },
+        { name: "鄧文怡" },
       ],
     },
     "品保課": {
@@ -902,8 +893,8 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
-        { name: "溫家銘", joinDate: "2022-09-16" },
-        { name: "許棕荃", joinDate: "2026-09-01" },
+        { name: "溫家銘" },
+        { name: "許棕荃" },
       ],
     },
     "主管": {
@@ -919,8 +910,9 @@
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 12, evaluator: "管理部" },
       ],
       roster: [
-        { name: "江秀如", joinDate: "2023-07-19" },
-        { name: "童瀚霆", joinDate: "2023-06-05" },
+        { name: "江秀如" },
+        { name: "童瀚霆" },
+        { name: "廖偉傑" },
       ],
     },
   };
@@ -983,7 +975,6 @@
   function onDepartmentChange() {
     const cat = currentCategory();
     const empSel = $("f-employeeName");
-    $("join-date-chip").hidden = true;
     Object.keys(scores).forEach(k => delete scores[k]);
     $("f-explanation").value = "";
 
@@ -999,18 +990,6 @@
     buildCriteriaGroups(cat);
     $("scoring-section").hidden = false;
     updateTotal();
-  }
-
-  function onEmployeeChange() {
-    const cat = currentCategory();
-    const name = $("f-employeeName").value;
-    const person = cat?.roster.find(p => p.name === name);
-    if (person) {
-      $("join-date-value").textContent = person.joinDate;
-      $("join-date-chip").hidden = false;
-    } else {
-      $("join-date-chip").hidden = true;
-    }
   }
 
   // ---------- criteria UI ----------
@@ -1085,7 +1064,6 @@
     Object.keys(scores).forEach(k => delete scores[k]);
     $("f-explanation").value = "";
     $("scoring-section").hidden = true;
-    $("join-date-chip").hidden = true;
     $("f-employeeName").innerHTML = '<option value="">請先選擇部門</option>';
     $("f-employeeName").disabled = true;
   }
@@ -1115,11 +1093,9 @@
     btn.disabled = true;
     btn.textContent = "送出中…";
 
-    const person = cat.roster.find(p => p.name === employeeName);
     const payload = {
       employeeName,
       department,
-      joinDate: person ? person.joinDate : "",
       reviewerName,
       scores: { ...scores },
       total,
@@ -1304,7 +1280,6 @@
         <div class="person-card-head">
           <div>
             <div class="emp-name">${escapeHtml(person.name)}</div>
-            <div class="emp-meta">到職 ${escapeHtml(person.joinDate)}</div>
           </div>
           <span class="badge pending">尚未填寫</span>
         </div>`;
@@ -1328,7 +1303,6 @@
       <div class="person-card-head">
         <div>
           <div class="emp-name">${escapeHtml(person.name)}</div>
-          <div class="emp-meta">到職 ${escapeHtml(person.joinDate)}</div>
         </div>
         <div class="person-card-score">
           <div class="num">${record.total}<small> / 100</small></div>
@@ -1383,7 +1357,7 @@
     const rows = getFilteredRecords();
     if (!rows.length) { showToast("目前沒有可匯出的資料"); return; }
 
-    const header = ["部門", "被考核者姓名", "到職日期", "填表人姓名",
+    const header = ["部門", "被考核者姓名", "填表人姓名",
       "評分明細", "總分", "等第", "分數異常說明", "主要優點", "待改進事項", "填寫時間"];
 
     const lines = [header];
@@ -1391,7 +1365,7 @@
       const cat = CATEGORIES[rec.department];
       const detail = cat ? cat.criteria.map(c => `${c.text}:${rec.scores?.[c.key] ?? ""}/${c.weight}`).join(" | ") : "";
       lines.push([
-        rec.department, rec.employeeName, rec.joinDate, rec.reviewerName,
+        rec.department, rec.employeeName, rec.reviewerName,
         detail, rec.total ?? "", bandOf(rec.total ?? 0).label,
         rec.explanation, rec.strengths, rec.improvements,
         rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : "",
