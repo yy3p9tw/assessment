@@ -722,6 +722,12 @@
             <span class="label">部門評核小計</span>
             <span class="value" id="live-total">— / 100</span>
           </div>
+          <div class="explain-box" id="explain-box" hidden>
+            <div class="field">
+              <label>小計低於部門滿分 60%，請敘明具體事實<span class="req">*</span></label>
+              <textarea id="f-explanation" placeholder="請具體說明評分依據，例如特殊事蹟或重大缺失"></textarea>
+            </div>
+          </div>
         </div>
 
         <div class="section">
@@ -763,11 +769,11 @@
       criteria: [
         { key: "c1", text: "出車前是否確實核對出貨單、簽單與實物數量/品項，無遺漏", weight: 15, evaluator: "部門直屬主管" },
         { key: "c2", text: "路線規劃與運輸效率-評估運輸作業的準點率(實際出發/到達時間與預定時間之比較)", weight: 15, evaluator: "部門直屬主管" },
-        { key: "c3", text: "評估貨物抵達狀態及運送過程中失誤或損壞的比例", weight: 7, evaluator: "部門直屬主管" },
-        { key: "c4", text: "作業與駕駛安全 -是否發生安全事故，是否遵守交通規則，及相關安全紀錄", weight: 8, evaluator: "部門直屬主管" },
+        { key: "c3", text: "評估貨物抵達狀態及運送過程中失誤或損壞的比例", weight: 9, evaluator: "部門直屬主管" },
+        { key: "c4", text: "作業與駕駛安全 -是否發生安全事故，是否遵守交通規則，及相關安全紀錄", weight: 9, evaluator: "部門直屬主管" },
         { key: "c5", text: "紀錄與回報完整性-落實到貨拍照回報、客戶滿意度、團隊合作與任務完成", weight: 12, evaluator: "部門直屬主管" },
         { key: "c6", text: "車輛維護與保養及應急處理能力(評估司機遇到事故、貨物損壞、客戶異常要求等應變能力)", weight: 10, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -781,10 +787,10 @@
         { key: "c1", text: "與各部門協調能力、團隊合作、壓力下的情緒控管", weight: 12, evaluator: "部門直屬主管" },
         { key: "c2", text: "訂單處理時間、突發訂單處理、出貨錯誤率，入庫/出庫單、ERP系統資料準確性", weight: 12, evaluator: "部門直屬主管" },
         { key: "c3", text: "盤點庫存準確性、周轉率、損壞或逾期通報及追蹤", weight: 15, evaluator: "部門直屬主管" },
-        { key: "c4", text: "人員調度與工作效率(突發事件應變能力、整體工作效率)", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c4", text: "人員調度與工作效率(突發事件應變能力、整體工作效率)", weight: 11, evaluator: "部門直屬主管" },
         { key: "c5", text: "凍庫/倉庫整潔、空間利用率、安全規範遵守", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c6", text: "設備操作與維護(堆高機或搬運工具的操作與維護)", weight: 8, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "c6", text: "設備操作與維護(堆高機或搬運工具的操作與維護)", weight: 10, evaluator: "部門直屬主管" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -795,13 +801,13 @@
     },
     "會計課": {
       criteria: [
-        { key: "c1", text: "憑證、帳目完整性，現金收支及會計科目使用正確性，帳務調整或返工次數", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c2", text: "會計原則理解、內控遵循、會計系統（如鼎新軟體）操作熟練度，職能訓練與持續學習", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c3", text: "臨時任務完成率、規定時間內完成工作次數、問題發現與流程改善建議", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c1", text: "憑證、帳目完整性，現金收支及會計科目使用正確性，帳務調整或返工次數", weight: 11, evaluator: "部門直屬主管" },
+        { key: "c2", text: "會計原則理解、內控遵循、會計系統（如鼎新軟體）操作熟練度，職能訓練與持續學習", weight: 11, evaluator: "部門直屬主管" },
+        { key: "c3", text: "臨時任務完成率、規定時間內完成工作次數、問題發現與流程改善建議", weight: 11, evaluator: "部門直屬主管" },
         { key: "c4", text: "與其他部門協作能力、日常工作態度、團隊合作表現", weight: 10, evaluator: "部門直屬主管" },
         { key: "c5", text: "財務資料保密、合規遵循及風險控制意識", weight: 12, evaluator: "部門直屬主管" },
         { key: "c6", text: "財務報表準確性、分析解讀能力及問題判斷能力", weight: 15, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -815,10 +821,10 @@
         { key: "c1", text: "工作( 表現 )執行能力、文書處理準確率(出錯次數)與時效", weight: 12, evaluator: "部門直屬主管" },
         { key: "c2", text: "訂單處理效率、庫存準確性、（電子/紙本資料是否清楚、分類正確）", weight: 12, evaluator: "部門直屬主管" },
         { key: "c3", text: "是否主動提出改善流程或建議", weight: 15, evaluator: "部門直屬主管" },
-        { key: "c4", text: "跨部門協作（是否能主動聯繫回報與追蹤、有效協調）、團隊合作關係", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c4", text: "跨部門協作（是否能主動聯繫回報與追蹤、有效協調）、團隊合作關係", weight: 11, evaluator: "部門直屬主管" },
         { key: "c5", text: "內部行政流程執行效率（請購、報修、訂餐彙整等）", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c6", text: "多技能掌握與彈性應變能力(支援能力、臨時任務)", weight: 8, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "c6", text: "多技能掌握與彈性應變能力(支援能力、臨時任務)", weight: 10, evaluator: "部門直屬主管" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -827,13 +833,13 @@
     },
     "生產製造課": {
       criteria: [
-        { key: "c1", text: "工作執行能力與態度(遵守操作流程、品質意識、完成日常工作任務)", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c2", text: "生產(操作熟練度、產量完成率、產品合格率、效率)", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c3", text: "臨時任務完成率、規定時間內完成工作次數、問題發現與流程改善建議", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c1", text: "工作執行能力與態度(遵守操作流程、品質意識、完成日常工作任務)", weight: 11, evaluator: "部門直屬主管" },
+        { key: "c2", text: "生產(操作熟練度、產量完成率、產品合格率、效率)", weight: 11, evaluator: "部門直屬主管" },
+        { key: "c3", text: "臨時任務完成率、規定時間內完成工作次數、問題發現與流程改善建議", weight: 11, evaluator: "部門直屬主管" },
         { key: "c4", text: "主動性與問題改善能力(臨時任務完成、問題發現、改善建議與落實成效)", weight: 10, evaluator: "部門直屬主管" },
         { key: "c5", text: "工作環境與安全遵守(服裝儀容、場區整潔、設備操作安全、防護措施遵守)", weight: 12, evaluator: "部門直屬主管" },
         { key: "c6", text: "職能訓練與持續學習(必修課程完成、技能提升、學習意識與實務應用)", weight: 15, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -853,10 +859,10 @@
         { key: "c1", text: "遵守食品安全法規、作業標準、內部稽核通過率及不符點發生次數", weight: 12, evaluator: "部門直屬主管" },
         { key: "c2", text: "實驗室整潔、檢驗準確性、檢驗效率、檢測設備操作熟練度", weight: 12, evaluator: "部門直屬主管" },
         { key: "c3", text: "發現食品或生產異常問題、提出改善建議及改進落實成效", weight: 15, evaluator: "部門直屬主管" },
-        { key: "c4", text: "臨時任務完成率、工作效率及問題回報速度", weight: 10, evaluator: "部門直屬主管" },
+        { key: "c4", text: "臨時任務完成率、工作效率及問題回報速度", weight: 11, evaluator: "部門直屬主管" },
         { key: "c5", text: "持續學習、職能訓練完成度、食品安全與檢驗方法掌握程度", weight: 10, evaluator: "部門直屬主管" },
-        { key: "c6", text: "檢驗紀錄、稽核表及異常處理單的完整性與準確性", weight: 8, evaluator: "部門直屬主管" },
-        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 8, evaluator: "管理部" },
+        { key: "c6", text: "檢驗紀錄、稽核表及異常處理單的完整性與準確性", weight: 10, evaluator: "部門直屬主管" },
+        { key: "attendance", text: "出勤紀律(遲退、曠、事假及未依規打卡等可歸責情形)", weight: 5, evaluator: "管理部" },
         { key: "culture", text: "對公司組織文化的理解，對公司政策推行配合度，遵守內規、積極參與公司教育訓練、職安等", weight: 25, evaluator: "管理部" },
       ],
       roster: [
@@ -934,6 +940,7 @@
     const cat = currentCategory();
     const empSel = $("f-employeeName");
     Object.keys(scores).forEach(k => delete scores[k]);
+    $("f-explanation").value = "";
 
     if (!cat) {
       empSel.innerHTML = '<option value="">請先選擇部門</option>';
@@ -989,7 +996,8 @@
   function updateTotal() {
     const cat = currentCategory();
     const el = $("live-total");
-    if (!cat) { el.textContent = "— / 100"; el.className = "value"; return; }
+    const explainBox = $("explain-box");
+    if (!cat) { el.textContent = "— / 100"; el.className = "value"; explainBox.hidden = true; return; }
 
     const items = deptCriteria(cat);
     const max = items.reduce((sum, c) => sum + c.weight, 0);
@@ -997,18 +1005,21 @@
     const complete = filledCount(cat) === items.length;
     el.textContent = (complete ? total : "—") + " / " + max;
 
+    const ratio = complete && max ? total / max : 1;
     let cls = "good";
     if (complete) {
-      const ratio = max ? total / max : 0;
       if (ratio < 0.6) cls = "bad";
       else if (ratio < 0.8) cls = "warn";
     }
     el.className = "value " + cls;
+
+    explainBox.hidden = !(complete && ratio < 0.6);
   }
 
   function resetForm() {
     $("assessment-form").reset();
     Object.keys(scores).forEach(k => delete scores[k]);
+    $("f-explanation").value = "";
     $("scoring-section").hidden = true;
     $("f-employeeName").innerHTML = '<option value="">請先選擇部門</option>';
     $("f-employeeName").disabled = true;
@@ -1029,6 +1040,12 @@
     if (filledCount(cat) < deptCriteria(cat).length) { showToast("請完成所有評分項目"); return; }
 
     const total = totalScore(cat);
+    const max = deptCriteria(cat).reduce((sum, c) => sum + c.weight, 0);
+    const explanation = $("f-explanation").value.trim();
+    if (max && total / max < 0.6 && !explanation) {
+      showToast("小計低於部門滿分 60%，請敘明具體事實");
+      return;
+    }
 
     const btn = $("submit-btn");
     btn.disabled = true;
@@ -1040,6 +1057,7 @@
       reviewerName,
       scores: { ...scores },
       total,
+      explanation,
       strengths: $("f-strengths").value.trim(),
       improvements: $("f-improvements").value.trim(),
       submittedAt: new Date().toISOString(),
