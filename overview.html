@@ -668,7 +668,6 @@
   .weight-log-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     font-size: 0.82rem;
     color: var(--text);
@@ -678,8 +677,34 @@
 
   .weight-log-item:first-child { border-top: none; }
 
+  .weight-log-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
   .weight-log-item .plus { color: var(--good); font-weight: 700; }
   .weight-log-item .minus { color: var(--bad); font-weight: 700; }
+
+  .weight-log-remove {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .weight-log-remove:hover { border-color: var(--bad); color: var(--bad); }
 
   .weight-log-empty {
     font-size: 0.8rem;
@@ -993,6 +1018,7 @@
   window.saveManagementScores = saveManagementScores;
   window.adjustWeighting = adjustWeighting;
   window.adjustWeightingCustom = adjustWeightingCustom;
+  window.removeWeightingEntry = removeWeightingEntry;
 
   function showToast(msg) {
     const t = $("toast");
@@ -1267,10 +1293,13 @@
 
     const weightLog = record.weightingLog || [];
     const weighting = record.weighting ?? 0;
-    const weightLogHtml = weightLog.length ? weightLog.map(item => `
+    const weightLogHtml = weightLog.length ? weightLog.map((item, idx) => `
       <div class="weight-log-item">
-        <span>${escapeHtml(item.label)}</span>
-        <span class="${item.delta > 0 ? "plus" : "minus"}">${item.delta > 0 ? "+" : ""}${item.delta} 分</span>
+        <span class="weight-log-text">
+          <span class="weight-log-label">${escapeHtml(item.label)}</span>
+          <span class="${item.delta > 0 ? "plus" : "minus"}">${item.delta > 0 ? "+" : ""}${item.delta} 分</span>
+        </span>
+        <button class="weight-log-remove" title="刪除這筆紀錄" onclick="event.stopPropagation(); removeWeightingEntry('${record.id}', ${idx}, this)">×</button>
       </div>`).join("") : `<div class="weight-log-empty">尚無紀錄</div>`;
     const weightBoxHtml = `
       <div class="weight-box">
@@ -1387,6 +1416,27 @@
     }
     await applyWeightingDelta(recordId, label, sign * magnitude, btnEl);
     input.value = "";
+  }
+
+  async function removeWeightingEntry(recordId, index, btnEl) {
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+    const log = record.weightingLog || [];
+    const entry = log[index];
+    if (!entry) return;
+    if (!confirm(`確定要刪除這筆紀錄嗎？\n${entry.label} ${entry.delta > 0 ? "+" : ""}${entry.delta} 分`)) return;
+
+    const newLog = log.slice(0, index).concat(log.slice(index + 1));
+    const weighting = Math.round(newLog.reduce((sum, item) => sum + item.delta, 0) * 10) / 10;
+
+    btnEl.disabled = true;
+    try {
+      await updateRecord(recordId, { weightingLog: newLog, weighting });
+    } catch (err) {
+      console.error(err);
+      showToast("刪除失敗，請稍後再試");
+      btnEl.disabled = false;
+    }
   }
 
   function confirmDelete(id) {
