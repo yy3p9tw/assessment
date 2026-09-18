@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2026 年度績效考核</title>
-<meta name="description" content="內部主管線上填寫 2026 年度員工績效考核表，各部門評分項目與配分自動計算，即時彙整考核結果。">
-<meta property="og:title" content="2026 年度績效考核">
-<meta property="og:description" content="內部主管線上填寫 2026 年度員工績效考核表，各部門評分項目與配分自動計算，即時彙整考核結果。">
+<title>2026年Q3季度勤勉考核</title>
+<meta name="description" content="內部主管線上填寫 2026 年 Q3 季度勤勉考核表，各部門評分項目與配分自動計算，即時彙整考核結果。">
+<meta property="og:title" content="2026年Q3季度勤勉考核">
+<meta property="og:description" content="內部主管線上填寫 2026 年 Q3 季度勤勉考核表，各部門評分項目與配分自動計算，即時彙整考核結果。">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 <style>
@@ -563,6 +563,18 @@
 
   .person-card-score .num small { font-size: 0.78rem; font-weight: 500; color: var(--text-muted); }
 
+  .bonus-amount {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--good);
+  }
+
+  .bonus-amount.pending {
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
   .person-card-meta {
     margin-top: 10px;
     display: flex;
@@ -608,6 +620,70 @@
     display: flex;
     justify-content: flex-end;
     margin-top: 10px;
+  }
+
+  .weight-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    cursor: default;
+  }
+
+  .weight-current {
+    font-size: 0.86rem;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .weight-current b { color: var(--accent-strong); }
+
+  .weight-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px dashed var(--border);
+  }
+
+  .weight-row:first-of-type { border-top: none; padding-top: 0; }
+
+  .weight-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .weight-btns {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .weight-log {
+    margin-bottom: 10px;
+  }
+
+  .weight-log-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--text);
+    padding: 5px 0;
+    border-top: 1px dashed var(--border);
+  }
+
+  .weight-log-item:first-child { border-top: none; }
+
+  .weight-log-item .plus { color: var(--good); font-weight: 700; }
+  .weight-log-item .minus { color: var(--bad); font-weight: 700; }
+
+  .weight-log-empty {
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
 
   .detail-item {
@@ -683,6 +759,15 @@
 
   .empty-state .glyph { font-size: 2rem; margin-bottom: 10px; }
 
+  .bonus-footnote {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 0.74rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
   @media (max-width: 640px) {
     .grid-2 { grid-template-columns: 1fr; }
     #view-form .card { padding: 22px 18px; }
@@ -696,7 +781,7 @@
 <div class="app">
   <header class="top">
     <div class="brand">
-      <h1>2026 年度績效考核</h1>
+      <h1>2026年Q3季度勤勉考核</h1>
       <div class="sub">彙整總覽</div>
     </div>
   </header>
@@ -726,6 +811,11 @@
     <div class="empty-state" id="empty-state" hidden>
       <div class="glyph">🗂️</div>
       找不到符合條件的人員，換個部門或搜尋關鍵字試試。
+    </div>
+
+    <div class="bonus-footnote">
+      考核獎金級距：特優 98 分以上 NT$6,000／優 95-97 NT$4,500／甲 82-94 NT$3,000／乙 70-81 NT$2,200／丙 60-69 NT$1,200／丁 59 分以下 NT$0。
+      副理／業務／經理／部長級不適用季考核制度；特優（▲）亦不適用季考核制度。
     </div>
   </section>
 
@@ -889,6 +979,7 @@
   window.exportCsv = exportCsv;
   window.renderCards = renderCards;
   window.saveManagementScores = saveManagementScores;
+  window.adjustWeighting = adjustWeighting;
 
   function showToast(msg) {
     const t = $("toast");
@@ -951,13 +1042,23 @@
 
   // ---------- overview rendering ----------
 
+  // 分數 -> 等第 / 考核獎金對照表（來源：考核獎金級距表）
   function bandOf(total) {
-    if (total < 60) return { label: "不合格", cls: "bad", flagged: true };
-    if (total > 95) return { label: "優異", cls: "good", flagged: true };
-    if (total >= 80) return { label: "良好", cls: "good", flagged: false };
-    if (total >= 70) return { label: "尚可", cls: "warn", flagged: false };
-    return { label: "待加強", cls: "warn", flagged: false };
+    if (total >= 98) return { label: "特優", cls: "good", bonus: 6000 };
+    if (total >= 95) return { label: "優", cls: "good", bonus: 4500 };
+    if (total >= 82) return { label: "甲", cls: "good", bonus: 3000 };
+    if (total >= 70) return { label: "乙", cls: "warn", bonus: 2200 };
+    if (total >= 60) return { label: "丙", cls: "warn", bonus: 1200 };
+    return { label: "丁", cls: "bad", bonus: 0 };
   }
+
+  // 加權（功過紀錄）對照：大功/大過 ±9、小功/小過 ±6、嘉獎/申誡 ±3、口頭 ±1.5
+  const WEIGHT_TYPES = [
+    { pos: "大功", neg: "大過", value: 9 },
+    { pos: "小功", neg: "小過", value: 6 },
+    { pos: "嘉獎", neg: "申誡", value: 3 },
+    { pos: "口頭嘉獎", neg: "口頭申誡", value: 1.5 },
+  ];
 
   function deptCriteria(cat) {
     return cat.criteria.filter(c => c.evaluator === "部門直屬主管");
@@ -1036,11 +1137,12 @@
       if (!people.length) return;
 
       if (sortBy === "score-desc" || sortBy === "score-asc") {
+        const scoreOf = r => combinedTotal(r, cat) + (r.weighting ?? 0);
         people.sort((a, b) => {
           const af = a.record ? 0 : 1, bf = b.record ? 0 : 1;
           if (af !== bf) return af - bf;
           if (!a.record) return 0;
-          return sortBy === "score-desc" ? (b.record.total - a.record.total) : (a.record.total - b.record.total);
+          return sortBy === "score-desc" ? (scoreOf(b.record) - scoreOf(a.record)) : (scoreOf(a.record) - scoreOf(b.record));
         });
       } else if (sortBy === "date-desc") {
         people.sort((a, b) => new Date(b.record?.submittedAt || 0) - new Date(a.record?.submittedAt || 0));
@@ -1083,13 +1185,14 @@
     const isExpanded = expandedId === cardId;
     card.className = "person-card" + (isExpanded ? " expanded" : "");
     card.onclick = (e) => {
-      if (e.target.closest(".icon-btn, input, textarea, select, .mgmt-score-box")) return;
+      if (e.target.closest(".icon-btn, input, textarea, select, .mgmt-score-box, .weight-box")) return;
       expandedId = isExpanded ? null : cardId;
       renderCards();
     };
 
     const cat = CATEGORIES[dept];
-    const total = combinedTotal(record, cat);
+    const weighting = record.weighting ?? 0;
+    const total = combinedTotal(record, cat) + weighting;
     const mgmtDone = isMgmtDone(record, cat);
     const band = mgmtDone ? bandOf(total) : { label: "管理項目待評分", cls: "warn" };
     const dt = record.submittedAt ? new Date(record.submittedAt) : null;
@@ -1104,11 +1207,15 @@
         <div class="person-card-score">
           <div class="num">${total}<small> / 100</small></div>
           <span class="badge ${band.cls}">${band.label}</span>
+          ${mgmtDone
+            ? `<div class="bonus-amount">NT$ ${band.bonus.toLocaleString()}</div>`
+            : `<div class="bonus-amount pending">獎金待核算</div>`}
         </div>
       </div>
       <div class="person-card-meta">
         <span>填表人：${escapeHtml(record.reviewerName || "—")}</span>
         <span>填寫時間：${dtStr}${history.length > 1 ? `（共 ${history.length} 筆紀錄，顯示最新）` : ""}</span>
+        ${weighting !== 0 ? `<span>加權：${weighting > 0 ? "+" : ""}${weighting} 分</span>` : ""}
       </div>
       ${isExpanded ? buildDetailHtml(dept, record) : `
         <div class="person-card-foot">
@@ -1145,10 +1252,33 @@
         </div>
       </div>` : "";
 
+    const weightLog = record.weightingLog || [];
+    const weighting = record.weighting ?? 0;
+    const weightLogHtml = weightLog.length ? weightLog.map(item => `
+      <div class="weight-log-item">
+        <span>${escapeHtml(item.label)}</span>
+        <span class="${item.delta > 0 ? "plus" : "minus"}">${item.delta > 0 ? "+" : ""}${item.delta} 分</span>
+      </div>`).join("") : `<div class="weight-log-empty">尚無獎懲紀錄</div>`;
+    const weightBoxHtml = `
+      <div class="weight-box">
+        <div class="subsection-title">加權（獎懲紀錄）<span class="who">審核可調整</span></div>
+        <div class="weight-log">${weightLogHtml}</div>
+        <div class="weight-current">目前加權合計：<b>${weighting > 0 ? "+" : ""}${weighting}</b> 分</div>
+        ${WEIGHT_TYPES.map(t => `
+          <div class="weight-row">
+            <span class="weight-label">${t.pos}／${t.neg}（±${t.value}）</span>
+            <div class="weight-btns">
+              <button class="icon-btn" onclick="event.stopPropagation(); adjustWeighting('${record.id}', '${t.neg}', ${-t.value}, this)">${t.neg} −${t.value}</button>
+              <button class="icon-btn" onclick="event.stopPropagation(); adjustWeighting('${record.id}', '${t.pos}', ${t.value}, this)">${t.pos} +${t.value}</button>
+            </div>
+          </div>`).join("")}
+      </div>`;
+
     return `
       <div class="person-card-detail">
         <div class="detail-grid">${criteriaHtml}</div>
         ${mgmtFormHtml}
+        ${weightBoxHtml}
         <div class="detail-notes">
           ${record.explanation ? `<div class="note flag"><div class="k">分數異常說明</div><div class="v">${escapeHtml(record.explanation)}</div></div>` : ""}
           ${record.strengths ? `<div class="note"><div class="k">主要優點</div><div class="v">${escapeHtml(record.strengths)}</div></div>` : ""}
@@ -1204,6 +1334,22 @@
     }
   }
 
+  async function adjustWeighting(recordId, label, delta, btnEl) {
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+    const log = [...(record.weightingLog || []), { label, delta, at: new Date().toISOString() }];
+    const weighting = Math.round(log.reduce((sum, item) => sum + item.delta, 0) * 10) / 10;
+
+    btnEl.disabled = true;
+    try {
+      await updateRecord(recordId, { weightingLog: log, weighting });
+    } catch (err) {
+      console.error(err);
+      showToast("加權調整失敗，請稍後再試");
+      btnEl.disabled = false;
+    }
+  }
+
   function confirmDelete(id) {
     if (confirm("確定要刪除這筆考核紀錄嗎？此動作無法復原。")) {
       deleteRecord(id).then(() => showToast("已刪除該筆紀錄"));
@@ -1221,17 +1367,22 @@
     if (!rows.length) { showToast("目前沒有可匯出的資料"); return; }
 
     const header = ["部門", "被考核者姓名", "填表人姓名",
-      "評分明細", "總分", "等第", "分數異常說明", "主要優點", "待改進事項", "填寫時間"];
+      "評分明細", "小計", "加權", "總分", "等第", "考核獎金", "分數異常說明", "主要優點", "待改進事項", "填寫時間"];
 
     const lines = [header];
     rows.forEach(rec => {
       const cat = CATEGORIES[rec.department];
       const detail = cat ? cat.criteria.map(c => `${c.text}:${rec.scores?.[c.key] ?? ""}/${c.weight}`).join(" | ") : "";
-      const total = cat ? combinedTotal(rec, cat) : (rec.total ?? "");
-      const label = cat && !isMgmtDone(rec, cat) ? "管理項目待評分" : bandOf(total).label;
+      const subtotal = cat ? combinedTotal(rec, cat) : (rec.total ?? "");
+      const weighting = rec.weighting ?? 0;
+      const total = cat ? subtotal + weighting : subtotal;
+      const mgmtDone = cat && isMgmtDone(rec, cat);
+      const band = bandOf(total);
+      const label = mgmtDone ? band.label : "管理項目待評分";
+      const bonus = mgmtDone ? band.bonus : "";
       lines.push([
         rec.department, rec.employeeName, rec.reviewerName,
-        detail, total, label,
+        detail, subtotal, weighting, total, label, bonus,
         rec.explanation, rec.strengths, rec.improvements,
         rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : "",
       ]);
@@ -1241,7 +1392,7 @@
       row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
     ).join("\r\n");
 
-    const filename = `績效考核彙整_${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `季度勤勉考核彙整_${new Date().toISOString().slice(0, 10)}.csv`;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
