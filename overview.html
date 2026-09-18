@@ -661,6 +661,31 @@
     flex-shrink: 0;
   }
 
+  .weight-log {
+    margin-bottom: 10px;
+  }
+
+  .weight-log-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--text);
+    padding: 5px 0;
+    border-top: 1px dashed var(--border);
+  }
+
+  .weight-log-item:first-child { border-top: none; }
+
+  .weight-log-item .plus { color: var(--good); font-weight: 700; }
+  .weight-log-item .minus { color: var(--bad); font-weight: 700; }
+
+  .weight-log-empty {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
   .weight-custom-input {
     width: 68px;
     font: inherit;
@@ -1240,10 +1265,17 @@
         </div>
       </div>` : "";
 
+    const weightLog = record.weightingLog || [];
     const weighting = record.weighting ?? 0;
+    const weightLogHtml = weightLog.length ? weightLog.map(item => `
+      <div class="weight-log-item">
+        <span>${escapeHtml(item.label)}</span>
+        <span class="${item.delta > 0 ? "plus" : "minus"}">${item.delta > 0 ? "+" : ""}${item.delta} 分</span>
+      </div>`).join("") : `<div class="weight-log-empty">尚無紀錄</div>`;
     const weightBoxHtml = `
       <div class="weight-box">
         <div class="subsection-title">評分<span class="who">審核可調整</span></div>
+        <div class="weight-log">${weightLogHtml}</div>
         <div class="weight-current">目前合計：<b>${weighting > 0 ? "+" : ""}${weighting}</b> 分</div>
         ${["加權", "獎懲"].map(label => `
           <div class="weight-row weight-row-custom">
