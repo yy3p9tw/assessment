@@ -686,6 +686,18 @@
     color: var(--text-muted);
   }
 
+  .weight-custom-input {
+    width: 68px;
+    font: inherit;
+    font-size: 0.86rem;
+    text-align: center;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 4px;
+  }
+
   .detail-item {
     display: flex;
     align-items: baseline;
@@ -980,6 +992,7 @@
   window.renderCards = renderCards;
   window.saveManagementScores = saveManagementScores;
   window.adjustWeighting = adjustWeighting;
+  window.adjustWeightingCustom = adjustWeightingCustom;
 
   function showToast(msg) {
     const t = $("toast");
@@ -1264,6 +1277,15 @@
         <div class="subsection-title">加權（獎懲紀錄）<span class="who">審核可調整</span></div>
         <div class="weight-log">${weightLogHtml}</div>
         <div class="weight-current">目前加權合計：<b>${weighting > 0 ? "+" : ""}${weighting}</b> 分</div>
+        ${["加權", "獎懲"].map(label => `
+          <div class="weight-row weight-row-custom">
+            <span class="weight-label">${label}（自訂分數）</span>
+            <div class="weight-btns">
+              <input type="number" inputmode="decimal" min="0" step="0.5" class="weight-custom-input" placeholder="分數">
+              <button class="icon-btn" onclick="event.stopPropagation(); adjustWeightingCustom('${record.id}', '${label}', -1, this)">−</button>
+              <button class="icon-btn" onclick="event.stopPropagation(); adjustWeightingCustom('${record.id}', '${label}', 1, this)">+</button>
+            </div>
+          </div>`).join("")}
         ${WEIGHT_TYPES.map(t => `
           <div class="weight-row">
             <span class="weight-label">${t.pos}／${t.neg}（±${t.value}）</span>
@@ -1334,7 +1356,7 @@
     }
   }
 
-  async function adjustWeighting(recordId, label, delta, btnEl) {
+  async function applyWeightingDelta(recordId, label, delta, btnEl) {
     const record = records.find(r => r.id === recordId);
     if (!record) return;
     const log = [...(record.weightingLog || []), { label, delta, at: new Date().toISOString() }];
@@ -1348,6 +1370,23 @@
       showToast("加權調整失敗，請稍後再試");
       btnEl.disabled = false;
     }
+  }
+
+  async function adjustWeighting(recordId, label, delta, btnEl) {
+    await applyWeightingDelta(recordId, label, delta, btnEl);
+  }
+
+  async function adjustWeightingCustom(recordId, label, sign, btnEl) {
+    const row = btnEl.closest(".weight-row-custom");
+    const input = row.querySelector(".weight-custom-input");
+    const raw = input.value;
+    const magnitude = Math.abs(Number(raw));
+    if (raw === "" || Number.isNaN(magnitude) || magnitude === 0) {
+      showToast("請先輸入分數");
+      return;
+    }
+    await applyWeightingDelta(recordId, label, sign * magnitude, btnEl);
+    input.value = "";
   }
 
   function confirmDelete(id) {
