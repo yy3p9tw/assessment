@@ -731,15 +731,15 @@
         </div>
 
         <div class="section">
-          <div class="section-label">質性回饋（選填）</div>
+          <div class="section-label">質性回饋</div>
           <div class="grid-2">
             <div class="field full">
-              <label>主要優點</label>
-              <textarea id="f-strengths" placeholder="這段期間表現突出之處"></textarea>
+              <label>主要優點<span class="req">*</span></label>
+              <textarea id="f-strengths" placeholder="這段期間表現突出之處" required></textarea>
             </div>
             <div class="field full">
-              <label>待改進事項</label>
-              <textarea id="f-improvements" placeholder="建議加強或改善的方向"></textarea>
+              <label>待改進事項<span class="req">*</span></label>
+              <textarea id="f-improvements" placeholder="建議加強或改善的方向" required></textarea>
             </div>
           </div>
         </div>
@@ -1029,6 +1029,11 @@
       return;
     }
 
+    const strengths = $("f-strengths").value.trim();
+    const improvements = $("f-improvements").value.trim();
+    if (!strengths) { showToast("請填寫主要優點"); return; }
+    if (!improvements) { showToast("請填寫待改進事項"); return; }
+
     const btn = $("submit-btn");
     btn.disabled = true;
     btn.textContent = "送出中…";
@@ -1040,8 +1045,8 @@
       scores: { ...scores },
       total,
       explanation,
-      strengths: $("f-strengths").value.trim(),
-      improvements: $("f-improvements").value.trim(),
+      strengths,
+      improvements,
       submittedAt: new Date().toISOString(),
     };
 

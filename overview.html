@@ -756,6 +756,30 @@
     margin-top: 8px;
   }
 
+  .history-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    cursor: default;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--text);
+    padding: 6px 0;
+    border-top: 1px dashed var(--border);
+  }
+
+  .history-item:first-of-type { border-top: none; }
+
+  .history-date { flex: 1; min-width: 0; color: var(--text-muted); }
+  .history-total { flex-shrink: 0; font-weight: 700; color: var(--accent-strong); }
+
   .detail-item {
     display: flex;
     align-items: baseline;
@@ -1035,6 +1059,8 @@
   window.adjustWeightingCustom = adjustWeightingCustom;
   window.removeWeightingEntry = removeWeightingEntry;
   window.saveWeightingNote = saveWeightingNote;
+  window.saveHistorySnapshot = saveHistorySnapshot;
+  window.removeHistoryEntry = removeHistoryEntry;
 
   function showToast(msg) {
     const t = $("toast");
@@ -1240,7 +1266,7 @@
     const isExpanded = expandedId === cardId;
     card.className = "person-card" + (isExpanded ? " expanded" : "");
     card.onclick = (e) => {
-      if (e.target.closest(".icon-btn, input, textarea, select, .mgmt-score-box, .weight-box")) return;
+      if (e.target.closest(".icon-btn, input, textarea, select, .mgmt-score-box, .weight-box, .history-box")) return;
       expandedId = isExpanded ? null : cardId;
       renderCards();
     };
@@ -1348,11 +1374,28 @@
         </div>
       </div>`;
 
+    const historyLog = record.historyLog || [];
+    const historyLogHtml = historyLog.length ? historyLog.map((h, idx) => `
+      <div class="history-item">
+        <span class="history-date">${escapeHtml(h.at ? new Date(h.at).toLocaleString() : "—")}</span>
+        <span class="history-total">${h.total} 分</span>
+        <button class="weight-log-remove" title="刪除這筆紀錄" onclick="event.stopPropagation(); removeHistoryEntry('${record.id}', ${idx}, this)">×</button>
+      </div>`).join("") : `<div class="weight-log-empty">尚無紀錄</div>`;
+    const historyHtml = `
+      <div class="history-box">
+        <div class="subsection-title">歷史紀錄<span class="who">手動記錄</span></div>
+        ${historyLogHtml}
+        <div class="weight-note-foot">
+          <button class="icon-btn export" onclick="event.stopPropagation(); saveHistorySnapshot('${record.id}', this)">記錄目前分數</button>
+        </div>
+      </div>`;
+
     return `
       <div class="person-card-detail">
         <div class="detail-grid">${criteriaHtml}</div>
         ${mgmtFormHtml}
         ${weightBoxHtml}
+        ${historyHtml}
         <div class="detail-notes">
           ${record.explanation ? `<div class="note flag"><div class="k">分數異常說明</div><div class="v">${escapeHtml(record.explanation)}</div></div>` : ""}
           ${record.strengths ? `<div class="note"><div class="k">主要優點</div><div class="v">${escapeHtml(record.strengths)}</div></div>` : ""}
@@ -1477,6 +1520,44 @@
     } finally {
       btnEl.disabled = false;
       btnEl.textContent = "儲存備註";
+    }
+  }
+
+  async function saveHistorySnapshot(recordId, btnEl) {
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+    const cat = CATEGORIES[record.department];
+    const total = cat ? combinedTotal(record, cat) + (record.weighting ?? 0) : (record.total ?? 0);
+    const log = [...(record.historyLog || []), { total, at: new Date().toISOString() }];
+
+    btnEl.disabled = true;
+    try {
+      await updateRecord(recordId, { historyLog: log });
+      showToast("已記錄目前分數");
+    } catch (err) {
+      console.error(err);
+      showToast("記錄失敗，請稍後再試");
+    } finally {
+      btnEl.disabled = false;
+    }
+  }
+
+  async function removeHistoryEntry(recordId, index, btnEl) {
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+    const log = record.historyLog || [];
+    const entry = log[index];
+    if (!entry) return;
+    if (!confirm(`確定要刪除這筆歷史紀錄嗎？\n${entry.at ? new Date(entry.at).toLocaleString() : ""}　${entry.total} 分`)) return;
+
+    const newLog = log.slice(0, index).concat(log.slice(index + 1));
+    btnEl.disabled = true;
+    try {
+      await updateRecord(recordId, { historyLog: newLog });
+    } catch (err) {
+      console.error(err);
+      showToast("刪除失敗，請稍後再試");
+      btnEl.disabled = false;
     }
   }
 
