@@ -724,7 +724,7 @@
           </div>
           <div class="explain-box" id="explain-box" hidden>
             <div class="field">
-              <label>小計低於部門滿分 60%，請敘明具體事實<span class="req">*</span></label>
+              <label>小計低於部門滿分 60%，或滿分／達 65 分以上，請敘明具體事實<span class="req">*</span></label>
               <textarea id="f-explanation" placeholder="請具體說明評分依據，例如特殊事蹟或重大缺失"></textarea>
             </div>
           </div>
@@ -989,6 +989,7 @@
     el.textContent = (complete ? total : "—") + " / " + max;
 
     const ratio = complete && max ? total / max : 1;
+    const needsExplain = complete && (ratio < 0.6 || total >= 65 || total === max);
     let cls = "good";
     if (complete) {
       if (ratio < 0.6) cls = "bad";
@@ -996,7 +997,7 @@
     }
     el.className = "value " + cls;
 
-    explainBox.hidden = !(complete && ratio < 0.6);
+    explainBox.hidden = !needsExplain;
   }
 
   function resetForm() {
@@ -1025,8 +1026,8 @@
     const total = totalScore(cat);
     const max = deptCriteria(cat).reduce((sum, c) => sum + c.weight, 0);
     const explanation = $("f-explanation").value.trim();
-    if (max && total / max < 0.6 && !explanation) {
-      showToast("小計低於部門滿分 60%，請敘明具體事實");
+    if (max && (total / max < 0.6 || total >= 65 || total === max) && !explanation) {
+      showToast("小計低於部門滿分 60%，或滿分／達 65 分以上，請敘明具體事實");
       return;
     }
 
