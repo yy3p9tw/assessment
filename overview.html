@@ -955,7 +955,7 @@
 
     .print-header .print-date { font-size: 12px; color: #555; }
 
-    .print-dept { margin-bottom: 22px; page-break-inside: avoid; }
+    .print-dept { margin-bottom: 22px; }
 
     .print-dept h2 {
       font-size: 14px;
@@ -981,6 +981,56 @@
 
     .print-dept th { background: #eee; }
     .print-dept .pending-cell { color: #888; font-style: italic; }
+
+    .print-person {
+      page-break-inside: avoid;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px 10px;
+    }
+
+    .print-person-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      align-items: baseline;
+      font-size: 11px;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .print-person-name { font-size: 13px; font-weight: 700; }
+    .print-person-score { margin-left: auto; font-weight: 700; }
+
+    table.print-criteria {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 6px;
+    }
+
+    table.print-criteria th,
+    table.print-criteria td {
+      border: 1px solid #ccc;
+      padding: 3px 6px;
+      text-align: center;
+      color: #1b1b1b;
+    }
+
+    table.print-criteria .align-left,
+    .print-dept th.align-left { text-align: left; }
+
+    table.print-criteria th { background: #f3f3f3; }
+    table.print-criteria .tag { font-size: 9px; color: #888; margin-left: 4px; }
+
+    .print-sub {
+      font-size: 10px;
+      color: #333;
+      line-height: 1.6;
+      margin-top: 3px;
+    }
 
     .print-footnote {
       margin-top: 18px;
@@ -1835,7 +1885,7 @@
       const cat = CATEGORIES[dept];
       if (!cat.roster.length) return;
 
-      const rows = cat.roster.map(person => {
+      const summaryRows = cat.roster.map(person => {
         const record = getLatestRecordFor(dept, person.name);
         if (!record) {
           return `<tr>
@@ -1844,9 +1894,8 @@
           </tr>`;
         }
         const deptSubtotal = deptCriteria(cat).reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
-        const mgmtItems = mgmtCriteria(cat);
         const mgmtDone = isMgmtDone(record, cat);
-        const mgmtSubtotal = mgmtItems.reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
+        const mgmtSubtotal = mgmtCriteria(cat).reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
         const weighting = record.weighting ?? 0;
         const total = combinedTotal(record, cat) + weighting;
         const band = mgmtDone ? bandOf(total) : null;
@@ -1861,6 +1910,48 @@
         </tr>`;
       }).join("");
 
+      const detailCards = cat.roster.map(person => {
+        const record = getLatestRecordFor(dept, person.name);
+        if (!record) return "";
+
+        const mgmtDone = isMgmtDone(record, cat);
+        const weighting = record.weighting ?? 0;
+        const total = combinedTotal(record, cat) + weighting;
+        const band = mgmtDone ? bandOf(total) : null;
+        const dt = record.submittedAt ? new Date(record.submittedAt).toLocaleString() : "—";
+
+        const criteriaRows = cat.criteria.map(c => `
+          <tr>
+            <td class="align-left">${escapeHtml(c.text)}<span class="tag">（${c.evaluator}）</span></td>
+            <td>${record.scores?.[c.key] ?? "—"} / ${c.weight}</td>
+          </tr>`).join("");
+
+        const weightLog = record.weightingLog || [];
+        const weightLogHtml = weightLog.length ? `
+          <div class="print-sub"><b>加權紀錄：</b>${weightLog.map(w => `${escapeHtml(w.label)} ${w.delta > 0 ? "+" : ""}${w.delta}`).join("、")}</div>` : "";
+
+        const notesHtml = `
+          ${record.explanation ? `<div class="print-sub"><b>分數異常說明：</b>${escapeHtml(record.explanation)}</div>` : ""}
+          ${record.strengths ? `<div class="print-sub"><b>主要優點：</b>${escapeHtml(record.strengths)}</div>` : ""}
+          ${record.improvements ? `<div class="print-sub"><b>待改進事項：</b>${escapeHtml(record.improvements)}</div>` : ""}
+          ${record.weightingNote ? `<div class="print-sub"><b>加權備註：</b>${escapeHtml(record.weightingNote)}</div>` : ""}
+          ${weightLogHtml}`;
+
+        return `
+          <div class="print-person">
+            <div class="print-person-head">
+              <span class="print-person-name">${escapeHtml(person.name)}</span>
+              <span>填表人：${escapeHtml(record.reviewerName || "—")}／填寫時間：${escapeHtml(dt)}</span>
+              <span class="print-person-score">總分 ${total}　${band ? band.label + "　" + "NT$" + band.bonus.toLocaleString() : "（管理項目待評分）"}</span>
+            </div>
+            <table class="print-criteria">
+              <thead><tr><th class="align-left">評分項目</th><th>分數</th></tr></thead>
+              <tbody>${criteriaRows}</tbody>
+            </table>
+            ${notesHtml}
+          </div>`;
+      }).join("");
+
       sections += `
         <div class="print-dept">
           <h2>${escapeHtml(dept)}</h2>
@@ -1870,8 +1961,9 @@
                 <th>姓名</th><th>部門評核</th><th>管理課評分</th><th>加權</th><th>總分</th><th>等第</th><th>考核獎金</th>
               </tr>
             </thead>
-            <tbody>${rows}</tbody>
+            <tbody>${summaryRows}</tbody>
           </table>
+          ${detailCards}
         </div>`;
     });
 
