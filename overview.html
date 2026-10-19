@@ -922,6 +922,73 @@
     .detail-grid { grid-template-columns: 1fr; }
     .card-grid { grid-template-columns: 1fr; }
   }
+
+  .print-only { display: none; }
+
+  @media print {
+    body * { visibility: hidden; }
+    #print-report, #print-report * { visibility: visible; }
+    #print-report {
+      display: block;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 16px;
+      background: #fff;
+      color: #1b1b1b;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    .print-header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #1b1b1b;
+      padding-bottom: 12px;
+    }
+
+    .print-header h1 {
+      font-size: 20px;
+      margin: 0 0 4px;
+      color: #1b1b1b;
+    }
+
+    .print-header .print-date { font-size: 12px; color: #555; }
+
+    .print-dept { margin-bottom: 22px; page-break-inside: avoid; }
+
+    .print-dept h2 {
+      font-size: 14px;
+      margin: 0 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #1b1b1b;
+      color: #1b1b1b;
+    }
+
+    .print-dept table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .print-dept th,
+    .print-dept td {
+      border: 1px solid #999;
+      padding: 5px 8px;
+      text-align: center;
+      color: #1b1b1b;
+    }
+
+    .print-dept th { background: #eee; }
+    .print-dept .pending-cell { color: #888; font-style: italic; }
+
+    .print-footnote {
+      margin-top: 18px;
+      font-size: 10px;
+      line-height: 1.6;
+      color: #555;
+    }
+  }
 </style>
 </head>
 <body>
@@ -953,6 +1020,7 @@
       <div class="spacer"></div>
       <button class="icon-btn export" onclick="createSnapshot()">📸 建立快照</button>
       <button class="icon-btn export" onclick="exportCsv()">⬇ 匯出 CSV</button>
+      <button class="icon-btn export" onclick="exportPdf()">🖨 匯出 PDF</button>
     </div>
 
     <div id="cards-wrap"></div>
@@ -977,6 +1045,8 @@
   </section>
 
   <div class="toast" id="toast"></div>
+
+  <div id="print-report" class="print-only"></div>
 </div>
 
 <script type="module">
@@ -1117,6 +1187,7 @@
   function $(id) { return document.getElementById(id); }
   window.confirmDelete = confirmDelete;
   window.exportCsv = exportCsv;
+  window.exportPdf = exportPdf;
   window.renderCards = renderCards;
   window.createSnapshot = createSnapshot;
   window.deleteSnapshot = deleteSnapshot;
@@ -1751,6 +1822,74 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast("CSV 已匯出");
+  }
+
+  // ---------- PDF export (print layout) ----------
+
+  function buildPrintReport() {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+
+    let sections = "";
+    Object.keys(CATEGORIES).forEach(dept => {
+      const cat = CATEGORIES[dept];
+      if (!cat.roster.length) return;
+
+      const rows = cat.roster.map(person => {
+        const record = getLatestRecordFor(dept, person.name);
+        if (!record) {
+          return `<tr>
+            <td>${escapeHtml(person.name)}</td>
+            <td colspan="6" class="pending-cell">尚未填寫</td>
+          </tr>`;
+        }
+        const deptSubtotal = deptCriteria(cat).reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
+        const mgmtItems = mgmtCriteria(cat);
+        const mgmtDone = isMgmtDone(record, cat);
+        const mgmtSubtotal = mgmtItems.reduce((sum, c) => sum + (record.scores?.[c.key] ?? 0), 0);
+        const weighting = record.weighting ?? 0;
+        const total = combinedTotal(record, cat) + weighting;
+        const band = mgmtDone ? bandOf(total) : null;
+        return `<tr>
+          <td>${escapeHtml(person.name)}</td>
+          <td>${deptSubtotal}</td>
+          <td>${mgmtDone ? mgmtSubtotal : "待評分"}</td>
+          <td>${weighting > 0 ? "+" : ""}${weighting}</td>
+          <td>${total}</td>
+          <td>${band ? band.label : "待評分"}</td>
+          <td>${band ? "NT$" + band.bonus.toLocaleString() : "—"}</td>
+        </tr>`;
+      }).join("");
+
+      sections += `
+        <div class="print-dept">
+          <h2>${escapeHtml(dept)}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th><th>部門評核</th><th>管理課評分</th><th>加權</th><th>總分</th><th>等第</th><th>考核獎金</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    });
+
+    $("print-report").innerHTML = `
+      <div class="print-header">
+        <h1>管理課Q3季度勤勉考核整合</h1>
+        <div class="print-date">列印日期：${dateStr}</div>
+      </div>
+      ${sections}
+      <div class="print-footnote">
+        考核獎金級距：特優 98 分以上 NT$6,000／優 95-97 NT$4,500／甲 82-94 NT$3,000／乙 70-81 NT$2,200／丙 60-69 NT$1,200／丁 59 分以下 NT$0。<br>
+        副理／業務／經理／部長級不適用季考核制度；特優（▲）亦不適用季考核制度。
+      </div>`;
+  }
+
+  function exportPdf() {
+    buildPrintReport();
+    requestAnimationFrame(() => window.print());
   }
 
   // ---------- boot ----------
