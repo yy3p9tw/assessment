@@ -953,7 +953,7 @@
           <div class="criterion-name">${escapeHtml(c.text)}</div>
         </div>
         <div class="score-input">
-          <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1"
+          <input type="number" inputmode="decimal" min="0" max="${c.weight}" step="0.1"
             data-key="${c.key}" oninput="setScore('${c.key}', this.value, ${c.weight})">
           <span class="max">/ ${c.weight}</span>
         </div>
@@ -962,7 +962,7 @@
   }
 
   function setScore(key, raw, weight) {
-    const n = raw === "" ? null : Math.max(0, Math.min(weight, Math.round(Number(raw))));
+    const n = raw === "" ? null : Math.max(0, Math.min(weight, Math.round(Number(raw) * 10) / 10));
     if (n === null) { delete scores[key]; }
     else { scores[key] = n; }
     updateTotal();

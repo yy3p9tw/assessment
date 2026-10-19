@@ -1726,7 +1726,7 @@
               <div class="criterion-name">${escapeHtml(c.text)}</div>
             </div>
             <div class="score-input">
-              <input type="number" inputmode="numeric" min="0" max="${c.weight}" step="1" class="mgmt-score" data-key="${c.key}">
+              <input type="number" inputmode="decimal" min="0" max="${c.weight}" step="0.1" class="mgmt-score" data-key="${c.key}">
               <span class="max">/ ${c.weight}</span>
             </div>
           </div>`).join("")}
@@ -1802,7 +1802,7 @@
       const input = box.querySelector(`.mgmt-score[data-key="${c.key}"]`);
       const raw = input.value;
       if (raw === "") { showToast("請完成所有管理評分項目"); return; }
-      mgmtScores[c.key] = Math.max(0, Math.min(c.weight, Math.round(Number(raw))));
+      mgmtScores[c.key] = Math.max(0, Math.min(c.weight, Math.round(Number(raw) * 10) / 10));
     }
 
     const record = records.find(r => r.id === recordId);
