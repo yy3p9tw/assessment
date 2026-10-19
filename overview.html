@@ -496,6 +496,9 @@
   .icon-btn.export { border-color: var(--accent); color: var(--accent); }
   .icon-btn.export:hover { background: var(--accent-soft); }
 
+  .icon-btn.danger { border-color: var(--bad); color: var(--bad); }
+  .icon-btn.danger:hover { background: var(--bad-soft); }
+
   /* ---------- overview: department + person cards ---------- */
 
   .dept-section + .dept-section { margin-top: 26px; }
@@ -1083,8 +1086,8 @@
       </select>
       <div class="spacer"></div>
       <button class="icon-btn export" onclick="createSnapshot()">📸 建立快照</button>
-      <button class="icon-btn export" onclick="exportCsv()">⬇ 匯出 CSV</button>
       <button class="icon-btn export" onclick="exportPdf()">🖨 匯出 PDF</button>
+      <button class="icon-btn danger" onclick="clearAllRecords()">🗑 清除資料</button>
     </div>
 
     <div id="cards-wrap"></div>
@@ -1250,11 +1253,11 @@
 
   function $(id) { return document.getElementById(id); }
   window.confirmDelete = confirmDelete;
-  window.exportCsv = exportCsv;
   window.exportPdf = exportPdf;
   window.renderCards = renderCards;
   window.createSnapshot = createSnapshot;
   window.deleteSnapshot = deleteSnapshot;
+  window.clearAllRecords = clearAllRecords;
   window.toggleSnapshot = toggleSnapshot;
   window.toggleSnapshotEntry = toggleSnapshotEntry;
   window.saveManagementScores = saveManagementScores;
@@ -1300,6 +1303,29 @@
       records = loadLocal().map(r => r.id === id ? { ...r, ...patch } : r);
       saveLocal(records);
       renderAll();
+    }
+  }
+
+  async function clearAllRecords() {
+    if (!records.length) { showToast("目前沒有任何資料可清除"); return; }
+    const ok = confirm(
+      `確定要清除目前所有 ${records.length} 筆考核資料嗎？\n` +
+      `建議先按「建立快照」備份（快照不會被清除）。此動作無法復原！`
+    );
+    if (!ok) return;
+
+    try {
+      if (db) {
+        await Promise.all(records.map(r => deleteDoc(doc(db, "assessments", r.id))));
+      } else {
+        records = [];
+        saveLocal([]);
+        renderAll();
+      }
+      showToast("已清除所有考核資料");
+    } catch (err) {
+      console.error(err);
+      showToast("清除失敗，請稍後再試");
     }
   }
 
@@ -1557,18 +1583,6 @@
     sel.innerHTML = '<option value="">全部部門</option>' +
       Object.keys(CATEGORIES).map(d => `<option value="${d}">${d}</option>`).join("");
     if (Object.keys(CATEGORIES).includes(current)) sel.value = current;
-  }
-
-  function getFilteredRecords() {
-    const q = $("filter-search").value.trim().toLowerCase();
-    const department = $("filter-department").value;
-    let rows = records.filter(r => {
-      if (department && r.department !== department) return false;
-      if (q && !(`${r.employeeName} ${r.reviewerName}`.toLowerCase().includes(q))) return false;
-      return true;
-    });
-    rows.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-    return rows;
   }
 
   function recordsFor(dept, name) {
@@ -1903,51 +1917,6 @@
 
   function escapeHtml(str) {
     return String(str ?? "").replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]));
-  }
-
-  // ---------- CSV export ----------
-
-  function exportCsv() {
-    const rows = getFilteredRecords();
-    if (!rows.length) { showToast("目前沒有可匯出的資料"); return; }
-
-    const header = ["部門", "被考核者姓名", "填表人姓名",
-      "評分明細", "小計", "加權", "總分", "等第", "考核獎金", "分數異常說明", "主要優點", "待改進事項", "填寫時間"];
-
-    const lines = [header];
-    rows.forEach(rec => {
-      const cat = CATEGORIES[rec.department];
-      const detail = cat ? cat.criteria.map(c => `${c.text}:${rec.scores?.[c.key] ?? ""}/${c.weight}`).join(" | ") : "";
-      const subtotal = cat ? combinedTotal(rec, cat) : (rec.total ?? "");
-      const weighting = rec.weighting ?? 0;
-      const total = cat ? subtotal + weighting : subtotal;
-      const mgmtDone = cat && isMgmtDone(rec, cat);
-      const band = bandOf(total);
-      const label = mgmtDone ? band.label : "管理項目待評分";
-      const bonus = mgmtDone ? band.bonus : "";
-      lines.push([
-        rec.department, rec.employeeName, rec.reviewerName,
-        detail, subtotal, weighting, total, label, bonus,
-        rec.explanation, rec.strengths, rec.improvements,
-        rec.submittedAt ? new Date(rec.submittedAt).toLocaleString() : "",
-      ]);
-    });
-
-    const csv = "﻿" + lines.map(row =>
-      row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
-    ).join("\r\n");
-
-    const filename = `季度勤勉考核彙整_${new Date().toISOString().slice(0, 10)}.csv`;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast("CSV 已匯出");
   }
 
   // ---------- PDF export (print layout) ----------
